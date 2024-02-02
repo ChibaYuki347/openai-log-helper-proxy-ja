@@ -24,6 +24,18 @@ logging.basicConfig(filename="/var/log/loghelper_openai.log",
 
 logger = logging.getLogger(__name__)
 
+# Add Stram handler
+handler1 = logging.StreamHandler()
+handler1.setFormatter(logging.Formatter("%(asctime)s %(threadName)s %(levelname)8s %(message)s"))
+
+# Add Docker Log
+handler2 = logging.FileHandler(filename="/proc/1/fd/1")  #handler2 outputs to stdout file with PID=1 used by docker log
+handler2.setFormatter(logging.Formatter("%(asctime)s %(threadName)s %(levelname)8s %(message)s"))
+
+#loggerに2つのハンドラを設定
+logger.addHandler(handler1)
+logger.addHandler(handler2)
+
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
     """Returns the number of tokens in a text string."""
     encoding = tiktoken.get_encoding(encoding_name)
@@ -48,7 +60,6 @@ def parse_resp_body(resp_body: str) -> dict:
         "data": []
     }
     matches = parse_resp_body_regex.findall(resp_body.encode("utf-8").decode('unicode-escape'))
-    #logger.info(matches)
     for m in matches:
         try:
             j = json.loads(m.replace(':nul l,', ':null,').replace(':nu ll,', ':null,').replace(':n ull,', ':null,'))
@@ -61,8 +72,8 @@ def parse_resp_body(resp_body: str) -> dict:
             #logging.info(f"Strip: {resp_body.strip()}")
             #logging.info(f"strip encode/decode: {resp_body.strip().encode('utf-8').decode('unicode-escape')}")
             #logging.info(f"encode/decode strip: {resp_body.encode('utf-8').decode('unicode-escape').strip()}")
-            logging.info(f"encode/decode strip splitlines: {resp_body.encode('utf-8').decode('unicode-escape').strip().splitlines()}")
-            j = json.loads(resp_body.encode('utf-8').decode('unicode-escape').strip().splitlines()[0])
+            logging.info(f"encode/decode strip splitlines with utf-8: {resp_body.encode('utf-8').decode('unicode-escape').strip().splitlines()}")
+            j = json.loads(resp_body.encode('ISO-8859-1').decode('unicode-escape').strip().splitlines()[0])
             logging.info("Hey it is json!")
             logging.info(j)
             clean_j = cleanup_json(j)
@@ -138,9 +149,11 @@ def main():
             logger.info(len(resp_body["data"]))
             num_tokens = 0
             for d in resp_body["data"]:
+                logger.info(d)
                 try:
                     if "choices" in d and len(d["choices"]) > 0 and "delta" in d["choices"][0] and "content" in d["choices"][0]["delta"]:
-                        resp_body_arr.append(d["choices"][0]["delta"]["content"])
+                        #  Appry for Multi Byte Character(e.g. Japanese)
+                        resp_body_arr.append(d["choices"][0]["delta"]["content"].encode('ISO-8859-1').decode('utf-8'))
                     if "choices" in d and len(d["choices"]) > 0 and "message" in d["choices"][0] and "content" in d["choices"][0]["message"]:
                         resp_body_arr.append(d["choices"][0]["message"]["content"])
                         if "usage" in d and "completion_tokens" in d["usage"]:
