@@ -1,6 +1,6 @@
 log_format main '$remote_addr - $remote_user [$time_local] "$request" '
                     '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent" "$http_x_forwarded_for" ||| "$req_header" ||| "$resp_header" ||| "$resp_body"';
+                    '"$http_user_agent" "$http_x_forwarded_for" ||| "$req_header" ||| "$req_body" ||| "$resp_header" ||| "$resp_body"';
 
 server {
     listen 80;
@@ -9,9 +9,14 @@ server {
     access_log /var/log/nginx_access.log main;
     access_log /dev/stdout;
     
+    set $req_body "";
     location /openai {
        proxy_buffering off;
        proxy_pass $OPENAI_ENDPOINT/openai;
+       lua_need_request_body on;
+       access_by_lua_block {
+        ngx.var.req_body = ngx.req.get_body_data()
+       }
     }
 
     set $req_header "";

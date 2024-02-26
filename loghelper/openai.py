@@ -52,6 +52,16 @@ def parse_headers(headers: str) -> dict:
             headers_dict[m[0]] = m[1]
     return headers_dict
 
+# req_body_regex = re.compile(r"(\S+): (\S+)")
+
+def parse_req_body(req_body: str) -> dict:
+    """Parses a string of HTTP request body into a dictionary."""
+    logger.info(f"PARSE REQ BODY! {req_body}")
+    req_body_dict = json.loads(req_body.encode('ISO-8859-1').decode('unicode-escape'))
+    logger.info(f"PARSED REQ BODY! {req_body_dict}")
+    
+    return req_body_dict
+
 parse_resp_body_regex = re.compile(r"data: (.+)")
 
 def parse_resp_body(resp_body: str) -> dict:
@@ -140,11 +150,14 @@ def main():
             # req headers
             req_headers = parse_headers(line_split[1])
             logger.info(req_headers)
+            # req body
+            logger.info(parse_req_body(line_split[2]))
+            req_body = parse_req_body(line_split[2])
             # resp headers
-            resp_headers = parse_headers(line_split[2])
+            resp_headers = parse_headers(line_split[3])
             logger.info(resp_headers)
             logger.info("-")
-            resp_body = parse_resp_body(line_split[3])
+            resp_body = parse_resp_body(line_split[4])
             resp_body_arr = []
             logger.info(len(resp_body["data"]))
             num_tokens = 0
@@ -169,10 +182,11 @@ def main():
                 event = EventData(json.dumps({
                     "Type": "openai-log-helper-proxy",
                     "req_headers": req_headers,
+                    "req_body": req_body,
                     "resp_headers": resp_headers,
                     "body_content": resp_body_content,
                     "num_tokens": num_tokens,
-                }).encode('utf-8'))
+                }))
                 logger.info("---")
                 asyncio.run(send_to_event_hub(event))
                 logger.info(f"Event: {event}")
