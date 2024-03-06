@@ -57,7 +57,9 @@ def parse_headers(headers: str) -> dict:
 def parse_req_body(req_body: str) -> dict:
     """Parses a string of HTTP request body into a dictionary."""
     logger.info(f"PARSE REQ BODY! {req_body}")
-    req_body_dict = json.loads(req_body.encode('ISO-8859-1').decode('unicode-escape'))
+    decoded_string = bytes(req_body, "utf-8").decode("unicode_escape").encode("latin1").decode("utf-8")
+    logger.info(f"decoded_string {decoded_string}")
+    req_body_dict = json.loads(decoded_string)
     logger.info(f"PARSED REQ BODY! {req_body_dict}")
     
     return req_body_dict
