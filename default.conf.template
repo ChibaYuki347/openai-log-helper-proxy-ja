@@ -13,6 +13,8 @@ server {
     location /openai {
        proxy_buffering off;
        proxy_pass $OPENAI_ENDPOINT/openai;
+       client_max_body_size 5M;
+       client_body_buffer_size 5M;
        lua_need_request_body on;
        access_by_lua_block {
         ngx.var.req_body = ngx.req.get_body_data()
